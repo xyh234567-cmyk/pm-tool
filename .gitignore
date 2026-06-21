@@ -6,3 +6,4 @@ data/*.db
 .venv/
 *.xlsx
 ~$*
+!tests/fixtures/*.xlsx
