@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS snapshot_task (
 );
 
 CREATE TABLE IF NOT EXISTS qc_issue (
+    run_id          INTEGER,
     biz_id          TEXT,
     snap_date       TEXT,
     source_filename TEXT,

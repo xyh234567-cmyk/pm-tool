@@ -13,8 +13,9 @@ from app.common.models import Project, Member, Task, QcIssue
 from app.storage.db import init_db, get_db
 from app.storage.repository import (
     upsert_snapshot,
+    start_scan_run,
+    finalize_scan_run,
     insert_qc,
-    insert_scan_run,
     get_latest_projects,
     get_project_detail,
     get_latest_members_all,
@@ -242,15 +243,35 @@ def test_empty_db_queries_return_empty(db_path):
     assert list_snapshot_dates("RW2026-001", db_path) == []
 
 
-# ── insert_qc / scan_run ───────────────────────────────
+# ── scan_run / qc ──────────────────────────────────────
+
+def test_start_and_finalize_scan_run(db_path):
+    """start_scan_run 返回 run_id; finalize 回填统计。"""
+    run_id = start_scan_run(db_path, started_at="2026-06-20T10:00:00Z")
+    assert isinstance(run_id, int)
+    assert run_id > 0
+
+    finalize_scan_run(run_id, {
+        "finished_at": "2026-06-20T10:01:00Z",
+        "files_total": 3, "inserted": 2, "updated": 1,
+        "skipped": 0, "qc_errors": 0, "qc_warnings": 5,
+    }, db_path)
+
+    run = get_last_scan_run(db_path)
+    assert run is not None
+    assert run["run_id"] == run_id
+    assert run["finished_at"] == "2026-06-20T10:01:00Z"
+    assert run["inserted"] == 2
+    assert run["qc_warnings"] == 5
+
 
 def test_insert_qc_and_query(db_path):
-    """写入 QC 问题, 查询能取回。"""
-    insert_scan_run({
-        "started_at": "2026-06-20T10:00:00Z",
+    """写入 QC 问题(带 run_id), 查询能取回。"""
+    run_id = start_scan_run(db_path, started_at="2026-06-20T10:00:00Z")
+    finalize_scan_run(run_id, {
         "finished_at": "2026-06-20T10:01:00Z",
         "files_total": 1, "inserted": 1,
-        "updated": 0, "skipped": 0, "qc_errors": 0, "qc_warnings": 2,
+        "updated": 0, "skipped": 0, "qc_errors": 0, "qc_warnings": 1,
     }, db_path)
 
     issues = [
@@ -259,12 +280,62 @@ def test_insert_qc_and_query(db_path):
                 issue_type="MEMBER_EXTERNAL", location="人员区行3",
                 message="人员姓名为外协"),
     ]
-    insert_qc(issues, db_path)
+    insert_qc(issues, run_id, db_path)
 
     rows = get_qc_issues(db_path, latest_run_only=False)
     assert len(rows) == 1
     assert rows[0]["issue_type"] == "MEMBER_EXTERNAL"
+    assert rows[0]["run_id"] == run_id
 
+
+def test_qc_latest_run_only_isolation(db_path):
+    """两次扫描批次, latest_run_only=True 只返回第二次的质检问题。"""
+    # 第一批次
+    run1 = start_scan_run(db_path, started_at="2026-06-19T10:00:00Z")
+    insert_qc([
+        QcIssue(biz_id="RW2026-001", snap_date="2026-06-19",
+                source_filename="a.xlsx", severity="warning",
+                issue_type="BAD_DATE", location="日期列",
+                message="日期无法解析"),
+        QcIssue(biz_id="RW2026-002", snap_date="2026-06-19",
+                source_filename="b.xlsx", severity="error",
+                issue_type="BIZ_ID_MISSING", location="业务ID",
+                message="业务ID为空"),
+    ], run1, db_path)
+    finalize_scan_run(run1, {
+        "finished_at": "2026-06-19T10:01:00Z",
+        "files_total": 2, "inserted": 2, "updated": 0,
+        "skipped": 0, "qc_errors": 1, "qc_warnings": 1,
+    }, db_path)
+
+    # 第二批次(最新)
+    run2 = start_scan_run(db_path, started_at="2026-06-20T10:00:00Z")
+    insert_qc([
+        QcIssue(biz_id="RW2026-001", snap_date="2026-06-20",
+                source_filename="c.xlsx", severity="warning",
+                issue_type="REQUIRED_EMPTY", location="项目名称",
+                message="项目名称为空"),
+    ], run2, db_path)
+    finalize_scan_run(run2, {
+        "finished_at": "2026-06-20T10:01:00Z",
+        "files_total": 1, "inserted": 1, "updated": 0,
+        "skipped": 0, "qc_errors": 0, "qc_warnings": 1,
+    }, db_path)
+
+    # latest_run_only=True → 只返回第二批次(REQUIRED_EMPTY)
+    latest = get_qc_issues(db_path, latest_run_only=True)
+    assert len(latest) == 1
+    assert latest[0]["issue_type"] == "REQUIRED_EMPTY"
+    assert latest[0]["run_id"] == run2
+
+    # latest_run_only=False → 返回全部 3 条
+    all_issues = get_qc_issues(db_path, latest_run_only=False)
+    assert len(all_issues) == 3
+    issue_types = {r["issue_type"] for r in all_issues}
+    assert issue_types == {"BAD_DATE", "BIZ_ID_MISSING", "REQUIRED_EMPTY"}
+
+
+# ── member / detail ─────────────────────────────────────
 
 def test_get_latest_members_excludes_external(db_path):
     """get_latest_members_all 不含 is_external=1 的行。"""

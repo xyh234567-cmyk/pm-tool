@@ -3,7 +3,6 @@
 约定: 日期 YYYY-MM-DD 文本存; 金额/百分比 REAL; 空值 NULL。
 """
 from __future__ import annotations
-import sqlite3
 from datetime import datetime, timezone
 from typing import Any
 
@@ -129,8 +128,63 @@ def upsert_snapshot(p: Project, db_path: str) -> str:
         conn.close()
 
 
-def insert_qc(issues: list[QcIssue], db_path: str) -> None:
-    """批量写入质检问题。"""
+# ── 扫描批次 ─────────────────────────────────────────────
+
+def start_scan_run(db_path: str, started_at: str = "") -> int:
+    """扫描开始时插入批次行, 返回 run_id; 统计字段留空, 结束时回填。"""
+    conn = get_db(db_path)
+    try:
+        cur = conn.execute(
+            """INSERT INTO scan_run (
+                started_at, finished_at, files_total,
+                inserted, updated, skipped, qc_errors, qc_warnings
+            ) VALUES (?,?,?, ?,?,?, ?,?)
+            """,
+            (started_at, "", 0, 0, 0, 0, 0, 0),
+        )
+        conn.commit()
+        return cur.lastrowid or 0
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+def finalize_scan_run(run_id: int, stats: dict[str, Any], db_path: str) -> None:
+    """扫描结束: 回填 finished_at 与各计数。"""
+    conn = get_db(db_path)
+    try:
+        conn.execute(
+            """UPDATE scan_run SET
+                finished_at=?, files_total=?,
+                inserted=?, updated=?, skipped=?,
+                qc_errors=?, qc_warnings=?
+            WHERE run_id=?
+            """,
+            (
+                stats.get("finished_at", ""),
+                stats.get("files_total", 0),
+                stats.get("inserted", 0),
+                stats.get("updated", 0),
+                stats.get("skipped", 0),
+                stats.get("qc_errors", 0),
+                stats.get("qc_warnings", 0),
+                run_id,
+            ),
+        )
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
+
+
+# ── 质检写入 ─────────────────────────────────────────────
+
+def insert_qc(issues: list[QcIssue], run_id: int, db_path: str) -> None:
+    """批量写入质检问题, 每行打上 run_id(归属本次扫描)。"""
     if not issues:
         return
     conn = get_db(db_path)
@@ -138,12 +192,12 @@ def insert_qc(issues: list[QcIssue], db_path: str) -> None:
         now = _now_iso()
         conn.executemany(
             """INSERT INTO qc_issue (
-                biz_id, snap_date, source_filename, severity,
+                run_id, biz_id, snap_date, source_filename, severity,
                 issue_type, location, message, detected_at
-            ) VALUES (?,?,?,?, ?,?,?,?)
+            ) VALUES (?,?,?,?,?, ?,?,?,?)
             """,
             [
-                (q.biz_id, q.snap_date, q.source_filename, q.severity,
+                (run_id, q.biz_id, q.snap_date, q.source_filename, q.severity,
                  q.issue_type, q.location, q.message, now)
                 for q in issues
             ],
@@ -156,40 +210,10 @@ def insert_qc(issues: list[QcIssue], db_path: str) -> None:
         conn.close()
 
 
-def insert_scan_run(stats: dict[str, Any], db_path: str) -> int:
-    """写入扫描批次记录, 返回 run_id。"""
-    conn = get_db(db_path)
-    try:
-        cur = conn.execute(
-            """INSERT INTO scan_run (
-                started_at, finished_at, files_total,
-                inserted, updated, skipped, qc_errors, qc_warnings
-            ) VALUES (?,?,?, ?,?,?, ?,?)
-            """,
-            (
-                stats.get("started_at", ""),
-                stats.get("finished_at", ""),
-                stats.get("files_total", 0),
-                stats.get("inserted", 0),
-                stats.get("updated", 0),
-                stats.get("skipped", 0),
-                stats.get("qc_errors", 0),
-                stats.get("qc_warnings", 0),
-            ),
-        )
-        conn.commit()
-        return cur.lastrowid or 0
-    except Exception:
-        conn.rollback()
-        raise
-    finally:
-        conn.close()
-
-
 # ── 查询接口 ─────────────────────────────────────────────
 
 def get_latest_projects(db_path: str) -> list[dict[str, Any]]:
-    """每个 biz_id 取最新快照的主表行(01 S6 口径)。"""
+    """每个 biz_id 取最新快照的主表行(01 §6 口径)。"""
     conn = get_db(db_path)
     try:
         rows = conn.execute(
@@ -253,22 +277,17 @@ def get_latest_members_all(db_path: str) -> list[dict[str, Any]]:
 def get_qc_issues(
     db_path: str, *, latest_run_only: bool = True
 ) -> list[dict[str, Any]]:
-    """查询质检问题。latest_run_only=True 时只取最后一次扫描批次的。"""
+    """查询质检问题。latest_run_only=True → WHERE run_id = (SELECT MAX(run_id) FROM scan_run)。
+
+    靠 run_id 精确过滤, 不得用 detected_at 时间戳硬凑。
+    """
     conn = get_db(db_path)
     try:
         if latest_run_only:
-            last = conn.execute(
-                "SELECT MAX(run_id) FROM scan_run"
-            ).fetchone()
-            if last is None or last[0] is None:
-                return []
-            last_run_id = last[0]
             rows = conn.execute(
-                """SELECT q.* FROM qc_issue q
-                JOIN scan_run sr ON q.detected_at <= sr.finished_at
-                WHERE sr.run_id = ?
-                ORDER BY q.rowid""",
-                (last_run_id,),
+                """SELECT * FROM qc_issue
+                WHERE run_id = (SELECT MAX(run_id) FROM scan_run)
+                ORDER BY rowid"""
             ).fetchall()
         else:
             rows = conn.execute(
