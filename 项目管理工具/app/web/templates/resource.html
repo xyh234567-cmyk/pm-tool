@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}资源撞车{% endblock %}
+{% block content %}
+<h2 class="text-[24px] font-semibold mb-6">资源撞车</h2>
+{% if not conflicts %}
+<div class="bg-white rounded-[28px] p-10 text-center text-[17px] text-[#707070]">未发现资源撞车</div>
+{% else %}
+{% for c in conflicts %}
+<div class="bg-white rounded-[28px] p-7 mb-4">
+  <div class="flex items-center justify-between mb-3">
+    <span class="font-semibold text-[17px]">{{ c.name }}</span>
+    <div>
+      {% if c.includes_today %}<span class="bg-[#ff3b30] text-white px-3 py-1 rounded-full text-[12px] mr-2">进行中</span>{% endif %}
+      <span class="text-[24px] font-bold text-[#ff3b30]">{{ c.peak_total }}%</span>
+    </div>
+  </div>
+  <div class="text-[14px] text-[#707070] mb-2">冲突段:</div>
+  {% for seg in c.conflict_segments %}
+  <div class="text-[12px] text-[#707070] mb-1 ml-4">• {{ seg.period_start }} ~ {{ seg.period_end }} ({{ seg.total }}%)</div>
+  {% endfor %}
+  <div class="text-[14px] text-[#707070] mt-3">涉及项目:</div>
+  <div class="flex gap-2 mt-1">
+  {% for pid in c.projects %}
+    <a href="/project/{{ pid }}" class="text-[#0066cc] text-[14px]">{{ pid }}</a>
+  {% endfor %}
+  </div>
+</div>
+{% endfor %}
+{% endif %}
+{% if incomplete %}
+<div class="mt-8">
+  <h3 class="text-[14px] font-medium text-[#707070] mb-3">数据不全(无法判定)</h3>
+  <table class="w-full bg-white rounded-[28px] overflow-hidden text-[14px]">
+    <thead class="bg-[#f5f5f7] text-[#707070]"><tr><th class="py-2 px-4 text-left">姓名</th><th class="py-2 px-4 text-left">项目</th><th class="py-2 px-4 text-left">缺失字段</th></tr></thead>
+    <tbody>
+    {% for m in incomplete %}
+    <tr class="border-t border-[#e8e8ed]">
+      <td class="py-2 px-4">{{ m.name or '—' }}</td>
+      <td class="py-2 px-4">{{ m.project_name or m.biz_id }}</td>
+      <td class="py-2 px-4 text-[#ff9f0a]">
+        {% if not m.join_start %}开始时间 {% endif %}{% if not m.join_end %}结束时间 {% endif %}{% if m.workload_pct is none %}投入%{% endif %}
+      </td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endif %}
+{% endblock %}
