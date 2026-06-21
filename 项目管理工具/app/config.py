@@ -3,7 +3,6 @@
 Python 3.11+ 内置 tomllib, 无需额外依赖。
 """
 from __future__ import annotations
-import os
 from pathlib import Path
 
 # 配置根目录:app/ 的上一级(即项目管理工具/)
