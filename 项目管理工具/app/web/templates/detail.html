@@ -1,63 +1,63 @@
 {% extends "base.html" %}
 {% block title %}{{ project.project_name }}{% endblock %}
 {% block head %}
-<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="/static/echarts.min.js"></script>
 {% endblock %}
 {% block content %}
-<a href="/" class="text-[14px] text-[#0066cc] no-underline mb-6 inline-block">← 返回总览</a>
+<a href="/" class="back-link">← 返回总览</a>
 
-<div class="bg-white rounded-[28px] p-8 mb-6">
+<div class="card-panel mb-6">
   <div class="flex items-start justify-between">
     <div>
-      <div class="text-[12px] text-[#707070]">{{ project.biz_id }}</div>
-      <h1 class="text-[32px] font-bold mt-1">{{ project.project_name }}</h1>
-      <div class="text-[14px] text-[#707070] mt-2">
+      <div class="t12 fg-2">{{ project.biz_id }}</div>
+      <h1 class="t32 fw7 mt-1">{{ project.project_name }}</h1>
+      <div class="t14 fg-2 mt-2">
         {% if project.customer %}客户: {{ project.customer }} · {% endif %}
         负责人: {{ project.owner_name or '—' }}
       </div>
     </div>
     <div class="text-right">
-      {% if project.delayed %}<span class="inline-block bg-[#ff3b30] text-white px-4 py-2 rounded-full text-[14px]">逾期</span>{% endif %}
-      <div class="text-[40px] font-bold mt-2">{{ (project.progress_pct|int) if project.progress_pct else '—' }}%</div>
+      {% if project.delayed %}<span class="pill pill-red">逾期</span>{% endif %}
+      <div class="detail-pct mt-2">{{ (project.progress_pct|int) if project.progress_pct else '—' }}%</div>
     </div>
   </div>
 </div>
 
-<div class="grid grid-cols-2 gap-6 mb-6">
-  <div class="bg-white rounded-[28px] p-7">
-    <h3 class="text-[12px] text-[#707070] mb-4">基本信息</h3>
-    <dl class="text-[14px]">
-      <div class="flex py-2 border-b border-[#e8e8ed]"><dt class="w-28 text-[#707070]">当前阶段</dt><dd>{{ project.stage_status or '—' }}</dd></div>
-      <div class="flex py-2 border-b border-[#e8e8ed]"><dt class="w-28 text-[#707070]">立项日期</dt><dd>{{ project.setup_date or '—' }}</dd></div>
-      <div class="flex py-2 border-b border-[#e8e8ed]"><dt class="w-28 text-[#707070]">计划交付</dt><dd class="{{ 'text-[#ff3b30]' if project.delayed }}">{{ project.plan_deliver_date or '—' }}</dd></div>
-      <div class="flex py-2 border-b border-[#e8e8ed]"><dt class="w-28 text-[#707070]">实际交付</dt><dd>{{ project.actual_deliver_date or '—' }}</dd></div>
-      <div class="flex py-2 border-b border-[#e8e8ed]"><dt class="w-28 text-[#707070]">风险等级</dt><dd>{{ project.risk_level or '—' }}</dd></div>
+<div class="grid-2 mb-6">
+  <div class="info-panel">
+    <h3>基本信息</h3>
+    <dl>
+      <div class="dl-row"><dt>当前阶段</dt><dd>{{ project.stage_status or '—' }}</dd></div>
+      <div class="dl-row"><dt>立项日期</dt><dd>{{ project.setup_date or '—' }}</dd></div>
+      <div class="dl-row"><dt>计划交付</dt><dd class="{{ "fg-danger" if project.delayed }}">{{ project.plan_deliver_date or '—' }}</dd></div>
+      <div class="dl-row"><dt>实际交付</dt><dd>{{ project.actual_deliver_date or '—' }}</dd></div>
+      <div class="dl-row"><dt>风险等级</dt><dd>{{ project.risk_level or '—' }}</dd></div>
     </dl>
   </div>
-  <div class="bg-white rounded-[28px] p-7">
-    <h3 class="text-[12px] text-[#707070] mb-4">合同与经营</h3>
-    <dl class="text-[14px]">
-      <div class="flex py-2 border-b border-[#e8e8ed]"><dt class="w-28 text-[#707070]">合同状态</dt><dd>{{ project.contract_status or '—' }}</dd></div>
-      <div class="flex py-2 border-b border-[#e8e8ed]"><dt class="w-28 text-[#707070]">已开票</dt><dd>{{ project.invoiced_amount or '—' }}</dd></div>
-      <div class="flex py-2 border-b border-[#e8e8ed]"><dt class="w-28 text-[#707070]">已回款</dt><dd>{{ project.received_amount or '—' }}</dd></div>
-      <div class="flex py-2 border-b border-[#e8e8ed]"><dt class="w-28 text-[#707070]">毛利率</dt><dd>{{ project.gross_margin_pct or '—' }}</dd></div>
+  <div class="info-panel">
+    <h3>合同与经营</h3>
+    <dl>
+      <div class="dl-row"><dt>合同状态</dt><dd>{{ project.contract_status or '—' }}</dd></div>
+      <div class="dl-row"><dt>已开票</dt><dd>{{ project.invoiced_amount or '—' }}</dd></div>
+      <div class="dl-row"><dt>已回款</dt><dd>{{ project.received_amount or '—' }}</dd></div>
+      <div class="dl-row"><dt>毛利率</dt><dd>{{ project.gross_margin_pct or '—' }}</dd></div>
     </dl>
   </div>
 </div>
 
-<div class="bg-white rounded-[28px] p-7 mb-6">
-  <h3 class="text-[12px] text-[#707070] mb-4">甘特图</h3>
+<div class="info-panel mb-6">
+  <h3>甘特图</h3>
   <div id="gantt" style="height:{{ project.tasks|length * 36 + 60 }}px"></div>
 </div>
 
-<div class="bg-white rounded-[28px] p-7 mb-6">
-  <h3 class="text-[12px] text-[#707070] mb-4">人员分工</h3>
-  <table class="w-full text-[14px]">
-    <thead class="bg-[#f5f5f7] text-[#707070]"><tr><th class="py-2 px-4 text-left">姓名</th><th class="py-2 px-4 text-left">角色</th><th class="py-2 px-4 text-left">投入%</th><th class="py-2 px-4 text-left">参与起止</th></tr></thead>
+<div class="info-panel mb-6">
+  <h3>人员分工</h3>
+  <table class="t14">
+    <thead class="bg-thead fg-2"><tr><th class="py-2 px-4">姓名</th><th class="py-2 px-4">角色</th><th class="py-2 px-4">投入%</th><th class="py-2 px-4">参与起止</th></tr></thead>
     <tbody>
     {% for m in project.members %}
-    <tr class="border-t border-[#e8e8ed] {{ 'text-[#aeaeb2]' if m.is_external }}">
-      <td class="py-2 px-4">{{ m.name or '—' }}{% if m.is_external %} <span class="text-[10px] bg-[#e8e8ed] px-2 py-0.5 rounded-full">外协</span>{% endif %}</td>
+    <tr class="table-row-sm {{ 'fg-gray' if m.is_external }}">
+      <td class="py-2 px-4">{{ m.name or '—' }}{% if m.is_external %} <span class="badge-sm badge-gray">外协</span>{% endif %}</td>
       <td class="py-2 px-4">{{ m.role or '—' }}</td>
       <td class="py-2 px-4">{{ (m.workload_pct|int) if m.workload_pct else '—' }}%</td>
       <td class="py-2 px-4">{{ m.join_start or '—' }} ~ {{ m.join_end or '—' }}</td>
@@ -67,19 +67,19 @@
   </table>
 </div>
 
-<div class="bg-white rounded-[28px] p-7">
-  <h3 class="text-[12px] text-[#707070] mb-4">任务列表</h3>
-  <table class="w-full text-[14px]">
-    <thead class="bg-[#f5f5f7] text-[#707070]"><tr><th class="py-2 px-2">#</th><th class="py-2 px-4 text-left">任务</th><th class="py-2 px-4 text-left">负责人</th><th class="py-2 px-4 text-left">计划起止</th><th class="py-2 px-4 text-left">完成度</th><th class="py-2 px-4 text-left">状态</th></tr></thead>
+<div class="info-panel">
+  <h3 class="t12 fg-2 mb-4">任务列表</h3>
+  <table class="t14">
+    <thead class="bg-thead fg-2"><tr><th class="py-2 px-2">#</th><th class="py-2 px-4">任务</th><th class="py-2 px-4">负责人</th><th class="py-2 px-4">计划起止</th><th class="py-2 px-4">完成度</th><th class="py-2 px-4">状态</th></tr></thead>
     <tbody>
     {% for t in project.tasks %}
-    <tr class="border-t border-[#e8e8ed]">
-      <td class="py-2 px-2 text-[#707070]">{{ t.seq or '—' }}</td>
+    <tr class="table-row-sm">
+      <td class="td-id">{{ t.seq or '—' }}</td>
       <td class="py-2 px-4">{{ t.task_name }}</td>
       <td class="py-2 px-4">{{ t.owner or '—' }}</td>
-      <td class="py-2 px-4 {{ 'text-[#ff3b30]' if t.plan_end and t.plan_end < project.gantt_domain.today and t.status and t.status not in ['已完成','完成'] and (t.progress_pct or 0) < 100 }}">{{ t.plan_start or '—' }} ~ {{ t.plan_end or '—' }}</td>
+      <td class="{{ 'fg-danger' if t.plan_end and t.plan_end < project.gantt_domain.today and t.status and t.status not in ['已完成','完成'] and (t.progress_pct or 0) < 100 }}">{{ t.plan_start or '—' }} ~ {{ t.plan_end or '—' }}</td>
       <td class="py-2 px-4">{{ (t.progress_pct|int) if t.progress_pct else '—' }}%</td>
-      <td class="py-2 px-4"><span class="inline-block px-2 py-0.5 rounded-full text-[12px] {{ 'bg-[#34c759] text-white' if t.bar_color=='done' else 'bg-[#ff9f0a] text-white' if t.bar_color=='doing' else 'bg-[#aeaeb2] text-white' }}">{{ t.status or '未开始' }}</span></td>
+      <td class="py-2 px-4"><span class="pill" {{ 'pill-green' if t.bar_color=='done' else 'pill-amber' if t.bar_color=='doing' else 'pill-gray' }}">{{ t.status or '未开始' }}</span></td>
     </tr>
     {% endfor %}
     </tbody>
@@ -101,7 +101,7 @@ fetch('/api/gantt/{{ project.biz_id }}').then(r=>r.json()).then(data=>{
     },data:[{name:t.name,value:[t.name,t.plan_start||t.actual_start,t.plan_end||t.plan_start]}],encode:{x:[1,2],y:0},itemStyle:{color:t.color}
   }))
   chart.setOption({
-    tooltip:{trigger:'axis'},grid:{left:160,right:40,top:10,bottom:30},xAxis:{type:'time',min:d.start,max:d.end,axisLabel:{formatter:'{MM}-{dd}'}},yAxis:{type:'category',data:tasks.map(t=>t.name),axisLabel:{width:150,overflow:'truncate'}},
+    tooltip:{trigger:'axis'},grid:{left:160,right:40,top:10,bottom:30},xAxis:{type:'time',min:d.start,max:d.end,axisLabel:{formatter:'{MM}-{dd}'}},yAxis:{type:'category',data:tasks.map(t=>t.name),inverse:true,axisLabel:{width:150,overflow:'truncate'}},
     series:[...series,{type:'line',markLine:{silent:true,symbol:'none',lineStyle:{color:'#ff3b30',type:'dashed',width:2},label:{formatter:'今天',color:'#ff3b30',fontSize:12},data:[{xAxis:d.today}]},data:[]}]
   })
 })

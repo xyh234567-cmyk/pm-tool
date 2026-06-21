@@ -1,6 +1,6 @@
 [paths]
 # NAS 项目 Excel 目录(可为本地挂载路径)
-nas_dir = "//NAS/共享/项目表"
+nas_dir = "/Users/starboy/icode/设计/项目管理工具/tests/fixtures"
 db_path = "data/pm.db"
 
 [thresholds]
