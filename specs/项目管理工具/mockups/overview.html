@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>项目总览 · Mockup</title>
+<style>
+  :root{
+    --bg:#f7f7f5; --surface:#fff; --line:#e7e6e1; --line2:#d6d5cf;
+    --text:#2c2c2a; --text2:#6b6a65; --text3:#9a988f;
+    --danger:#a32d2d; --danger-bg:#fcebeb;
+    --warn:#854f0b; --warn-bg:#faeeda;
+    --ok:#0f6e56; --ok-bg:#e1f5ee;
+    --green:#1d9e75; --amber:#ef9f27; --gray:#888780;
+    --radius:8px; --radius-lg:12px;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    font-size:14px;line-height:1.6}
+  .ref{background:#fff7e6;border-bottom:1px solid #f0d999;color:#7a5b00;
+    font-size:12px;padding:6px 16px;text-align:center}
+  .wrap{max-width:1100px;margin:0 auto;padding:18px 20px 40px}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+  .title{display:flex;align-items:center;gap:10px;font-size:19px;font-weight:500}
+  .title .dot{width:9px;height:9px;border-radius:2px;background:var(--text2)}
+  .btn{font-size:13px;padding:8px 14px;border:1px solid var(--line2);background:var(--surface);
+    border-radius:var(--radius);cursor:pointer}
+  .btn:hover{background:#f0efe9}
+  .scan-time{font-size:12px;color:var(--text3);margin-right:12px}
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+  .kpi{border-radius:var(--radius);padding:14px 16px;background:#efeee8;cursor:pointer}
+  .kpi .lab{font-size:13px;color:var(--text2)}
+  .kpi .num{font-size:25px;font-weight:500;margin-top:2px}
+  .kpi.danger{background:var(--danger-bg)} .kpi.danger .lab,.kpi.danger .num{color:var(--danger)}
+  .kpi.warn{background:var(--warn-bg)} .kpi.warn .lab,.kpi.warn .num{color:var(--warn)}
+  .tabs{display:flex;gap:4px;border-bottom:1px solid var(--line);margin-bottom:16px}
+  .tab{font-size:13px;padding:9px 14px;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent}
+  .tab.active{color:var(--text);font-weight:500;border-bottom-color:#185fa5}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{font-size:12px;padding:6px 12px;border:1px solid var(--line2);border-radius:var(--radius);
+    color:var(--text2);background:var(--surface);cursor:pointer}
+  .chip.danger{color:var(--danger)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius-lg);overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead tr{background:#f3f2ec;color:var(--text2);text-align:left}
+  th{padding:11px 12px;font-weight:500}
+  td{padding:12px;border-top:1px solid var(--line)}
+  tbody tr{cursor:pointer}
+  tbody tr:hover{background:#faf9f5}
+  .pname{font-weight:500}
+  .bar{display:flex;align-items:center;gap:8px}
+  .bar .track{flex:1;height:6px;background:#e7e6e1;border-radius:3px;overflow:hidden}
+  .bar .fill{height:100%}
+  .tag{font-size:11px;padding:2px 9px;border-radius:var(--radius)}
+  .tag.low{background:var(--ok-bg);color:var(--ok)}
+  .tag.mid{background:var(--warn-bg);color:var(--warn)}
+  .tag.high{background:var(--danger-bg);color:var(--danger)}
+  .due.over{color:var(--danger);font-weight:500}
+  .due.soon{color:var(--warn);font-weight:500}
+  .foot{font-size:12px;color:var(--text3);text-align:center;margin-top:14px}
+</style>
+</head>
+<body>
+<div class="ref">仅供视觉参考 · UI 布局/层级示意 · 数据为假数据,逻辑与字段以 specs 的 MD/YAML 规格为准</div>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="title"><span class="dot"></span>项目管理 · 全局监控</div>
+    <div>
+      <span class="scan-time">最近扫描 06-21 09:12</span>
+      <button class="btn">↻ 扫描 NAS</button>
+    </div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="lab">在管项目</div><div class="num">12</div></div>
+    <div class="kpi danger"><div class="lab">延期</div><div class="num">3</div></div>
+    <div class="kpi warn"><div class="lab">资源撞车</div><div class="num">2 人</div></div>
+    <div class="kpi"><div class="lab">7 天内交付</div><div class="num">4</div></div>
+  </div>
+
+  <div class="tabs">
+    <div class="tab active">总览</div>
+    <div class="tab">延期预警</div>
+    <div class="tab">资源撞车</div>
+    <div class="tab">数据质检</div>
+  </div>
+
+  <div class="filters">
+    <span class="chip">🔍 搜索项目</span>
+    <span class="chip">阶段 ▾</span>
+    <span class="chip">风险 ▾</span>
+    <span class="chip">负责人 ▾</span>
+    <span class="chip danger">仅看延期</span>
+  </div>
+
+  <div class="card">
+    <table>
+      <thead>
+        <tr>
+          <th style="width:13%">编号</th>
+          <th style="width:20%">项目</th>
+          <th style="width:13%">阶段</th>
+          <th style="width:20%">完成度</th>
+          <th style="width:10%">风险</th>
+          <th style="width:12%">计划交付</th>
+          <th style="width:12%;text-align:right">距交付</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>RW2026-001</td>
+          <td class="pname">隔离网关</td>
+          <td>进行中</td>
+          <td><div class="bar"><div class="track"><div class="fill" style="width:65%;background:var(--green)"></div></div><span>65%</span></div></td>
+          <td><span class="tag low">低</span></td>
+          <td>06-15</td>
+          <td style="text-align:right" class="due over">逾期6天</td>
+        </tr>
+        <tr>
+          <td>RW2026-018</td>
+          <td class="pname">数据采集卡</td>
+          <td>研制</td>
+          <td><div class="bar"><div class="track"><div class="fill" style="width:40%;background:var(--amber)"></div></div><span>40%</span></div></td>
+          <td><span class="tag mid">中</span></td>
+          <td>07-02</td>
+          <td style="text-align:right">11 天</td>
+        </tr>
+        <tr>
+          <td>RW2026-031</td>
+          <td class="pname">电源管理模块</td>
+          <td>交付中</td>
+          <td><div class="bar"><div class="track"><div class="fill" style="width:88%;background:var(--green)"></div></div><span>88%</span></div></td>
+          <td><span class="tag high">高</span></td>
+          <td>06-25</td>
+          <td style="text-align:right" class="due soon">4 天</td>
+        </tr>
+        <tr>
+          <td>RW2026-040</td>
+          <td class="pname">通信接口板</td>
+          <td>需求</td>
+          <td><div class="bar"><div class="track"><div class="fill" style="width:12%;background:var(--gray)"></div></div><span>12%</span></div></td>
+          <td><span class="tag low">低</span></td>
+          <td>08-20</td>
+          <td style="text-align:right">60 天</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="foot">点项目行进入详情 + 甘特 · 表头可排序 · KPI 卡可下钻到对应清单</div>
+</div>
+</body>
+</html>
