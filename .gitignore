@@ -6,4 +6,4 @@ data/*.db
 .venv/
 *.xlsx
 ~$*
-!tests/fixtures/*.xlsx
+!项目管理工具/tests/fixtures/*.xlsx

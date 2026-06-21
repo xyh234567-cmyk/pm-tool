@@ -1,0 +1,12 @@
+[paths]
+# NAS 项目 Excel 目录(可为本地挂载路径)
+nas_dir = "//NAS/共享/项目表"
+db_path = "data/pm.db"
+
+[thresholds]
+deliver_soon_days = 7
+workload_conflict_pct = 100
+
+[server]
+host = "127.0.0.1"
+port = 8000

@@ -73,6 +73,7 @@ tables:
   qc_issue:                       # 一行 = 一条质检告警
     primary_key: [rowid]          # 自增
     columns:
+      run_id:          {type: INTEGER}   # 关联 scan_run.run_id,标明属于哪次扫描(质检页按此过滤)
       biz_id:          {type: TEXT}      # 可能解析不出,允许空
       snap_date:       {type: TEXT}
       source_filename: {type: TEXT}

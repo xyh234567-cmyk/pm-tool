@@ -1,21 +1,20 @@
 """单文件解析器: 打开 xlsx, 解析 4 个区块 → Project + QcIssue[]。
 
-逻辑见 02-数据模型与Excel解析规格.md, 配置见 template_map.py。
+键值解析: 逐行扫描所有列找标签; 值 = 其右侧起、到本行下一个标签单元格之前区间内第一个非空值。
+区块锚点: 仅 A 列扫描。
 """
 from __future__ import annotations
 import re
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 import openpyxl
 
 from app.common.models import Project, Member, Task, QcIssue
-from app.common.dates import parse_and_fmt, is_date_parseable
+from app.common.dates import parse_and_fmt
 from app.common.enums import (
     BIZ_ID_PATTERN,
     FILENAME_PATTERN,
-    FILENAME_DATE_FORMAT,
     EXTERNAL_MEMBER_NAMES,
     MEMBER_NAME_SEPARATORS,
 )
@@ -35,7 +34,6 @@ from app.ingest.template_map import (
 
 
 def _strip_cell(v: Any) -> str | None:
-    """取单元格文本 strip, 空串/None 返回 None。"""
     if v is None:
         return None
     s = str(v).strip()
@@ -43,7 +41,6 @@ def _strip_cell(v: Any) -> str | None:
 
 
 def _parse_number(v: Any) -> float | None:
-    """按 02 §6 规则转数字。"""
     if v is None:
         return None
     if isinstance(v, (int, float)):
@@ -58,15 +55,24 @@ def _parse_number(v: Any) -> float | None:
 
 
 def _parse_date(v: Any) -> str | None:
-    """按 02 §6 规则转日期字符串。"""
     return parse_and_fmt(v)
 
 
-def parse(filename_meta: dict, filepath: Path) -> tuple[Project, list[QcIssue]]:
-    """解析单个 xlsx 文件。
+def _is_anchor_row(cell_text: str) -> bool:
+    """判断 A 列单元格文本是否为区块锚点。"""
+    return any(anchor in cell_text for anchor in ANCHOR_TEXTS)
 
-    filename_meta: scanner 解析好的 {biz_id_from_name, name_from_name, snap_date, source_filename}
-    """
+
+def _match_key_value_label(normalized_label: str) -> dict | None:
+    for key, field_def in KEY_VALUE_FIELDS.items():
+        if key in normalized_label or normalized_label in key:
+            return field_def
+    return None
+
+
+# ── 主入口 ──────────────────────────────────────────────
+
+def parse(filename_meta: dict, filepath: Path) -> tuple[Project, list[QcIssue]]:
     issues: list[QcIssue] = []
     source = filename_meta["source_filename"]
 
@@ -94,7 +100,7 @@ def parse(filename_meta: dict, filepath: Path) -> tuple[Project, list[QcIssue]]:
         ))
 
     # 3. 扫描 A 列找区块锚点
-    anchors: dict[str, int] = {}  # section_name → row
+    anchors: dict[str, int] = {}
     for row in range(1, ws.max_row + 1):
         cell_val = _strip_cell(ws.cell(row=row, column=1).value)
         if cell_val:
@@ -103,60 +109,15 @@ def parse(filename_meta: dict, filepath: Path) -> tuple[Project, list[QcIssue]]:
                     anchors[key] = row
                     break
 
-    # 4. 解析键值对(区块一: 业务基本信息, 区块二: 合同与经营)
+    # 4. 解析键值对(区块一/二) — 逐行扫描所有列
     project_data: dict[str, Any] = {}
-    kv_sections = [("basic", anchors.get("basic")), ("contract", anchors.get("contract"))]
-    for _sk, start_row in kv_sections:
+    for section_key in ("basic", "contract"):
+        start_row = anchors.get(section_key)
         if start_row is None:
             continue
         end_row = _find_next_anchor(start_row + 1, anchors)
-        for row in range(start_row + 1, end_row):
-            raw_label = _strip_cell(ws.cell(row=row, column=1).value)
-            if not raw_label:
-                continue
-            label = normalize_label(raw_label)
-            # 在 KEY_VALUE_FIELDS 中找匹配的标签
-            field_def = _match_key_value_label(label)
-            if field_def is None:
-                continue
-            # 取右侧第一个非空单元格
-            value = None
-            for col in range(2, ws.max_column + 1):
-                v = ws.cell(row=row, column=col).value
-                if v is not None and str(v).strip():
-                    value = v
-                    break
-            # 类型转换
-            col_name = field_def["column"]
-            ftype = field_def["type"]
-            if ftype == "date":
-                converted = _parse_date(value)
-                if value is not None and _strip_cell(value) and converted is None:
-                    issues.append(QcIssue(
-                        source_filename=source, severity="warning",
-                        issue_type="BAD_DATE", location=f"键值区/{label}",
-                        message=f"日期无法解析: {_strip_cell(value)}",
-                    ))
-                project_data[col_name] = converted
-            elif ftype == "number":
-                converted = _parse_number(value)
-                if value is not None and _strip_cell(value) and converted is None:
-                    issues.append(QcIssue(
-                        source_filename=source, severity="warning",
-                        issue_type="BAD_NUMBER", location=f"键值区/{label}",
-                        message=f"数字无法解析: {_strip_cell(value)}",
-                    ))
-                project_data[col_name] = converted
-            else:
-                project_data[col_name] = _strip_cell(value)
-
-            # 必填检查
-            if field_def.get("required") and not project_data[col_name]:
-                issues.append(QcIssue(
-                    source_filename=source, severity="warning",
-                    issue_type="REQUIRED_EMPTY", location=f"键值区/{label}",
-                    message=f"必填字段为空: {label}",
-                ))
+        kv_issues = _parse_kv_rows(ws, start_row + 1, end_row, source, project_data)
+        issues.extend(kv_issues)
 
     # 5. 解析人员分工(区块三)
     members: list[Member] = []
@@ -182,9 +143,9 @@ def parse(filename_meta: dict, filepath: Path) -> tuple[Project, list[QcIssue]]:
         issues.append(QcIssue(
             source_filename=source, severity="warning",
             issue_type="BIZ_ID_FORMAT", location="区块一/业务ID",
-            message=f"业务ID格式不符: {biz_id}, 期望 {BIZ_ID_PATTERN.pattern}",
+            message=f"业务ID格式不符: {biz_id}",
         ))
-    # 文件名 vs 表内 ID 不一致
+
     file_biz_id = filename_meta.get("biz_id_from_name", "")
     if file_biz_id and biz_id and file_biz_id != biz_id:
         issues.append(QcIssue(
@@ -192,7 +153,6 @@ def parse(filename_meta: dict, filepath: Path) -> tuple[Project, list[QcIssue]]:
             issue_type="ID_FILENAME_MISMATCH", location="文件名 vs 单元格",
             message=f"文件名ID={file_biz_id}, 表内ID={biz_id}",
         ))
-    # 文件名格式
     if filename_meta.get("filename_format_issue"):
         issues.append(QcIssue(
             source_filename=source, severity="warning",
@@ -232,30 +192,99 @@ def parse(filename_meta: dict, filepath: Path) -> tuple[Project, list[QcIssue]]:
     )
     proj.members = members
     proj.tasks = tasks
-
     return proj, issues
 
 
-# ── 辅助函数 ────────────────────────────────────────────
+# ── 新键值解析: 逐行扫描所有列 ──────────────────────────
+
+def _parse_kv_rows(
+    ws, start_row: int, end_row: int, source: str, project_data: dict
+) -> list[QcIssue]:
+    """在 [start_row, end_row) 内逐行扫描所有列找标签, 按新规则取右侧值。"""
+    issues: list[QcIssue] = []
+
+    for row in range(start_row, end_row):
+        # 收集本行所有"候选标签单元": (col, raw_text)
+        label_candidates: list[tuple[int, str]] = []
+        for col in range(1, ws.max_column + 1):
+            raw = ws.cell(row=row, column=col).value
+            txt = _strip_cell(raw)
+            if not txt:
+                continue
+            label_candidates.append((col, txt))
+
+        if not label_candidates:
+            continue
+
+        # 对每个候选, 尝试匹配 KEY_VALUE_FIELDS; 非标签的文本可能是区块锚点或普通文本, 跳过
+        for i, (label_col, raw_text) in enumerate(label_candidates):
+            normalized = normalize_label(raw_text)
+            field_def = _match_key_value_label(normalized)
+            if field_def is None:
+                # 本单元格不是已知标签, 不用做标签处理。其右侧不用它作边界
+                continue
+
+            # 找"本行下一个标签"的列号(若有)
+            next_label_col = None
+            for j in range(i + 1, len(label_candidates)):
+                ncol, ntext = label_candidates[j]
+                nnorm = normalize_label(ntext)
+                if _match_key_value_label(nnorm) is not None:
+                    next_label_col = ncol
+                    break
+
+            # 在 (label_col+1, next_label_col) 区间内找第一个非空值
+            value = None
+            search_end = next_label_col if next_label_col else ws.max_column + 1
+            for vcol in range(label_col + 1, search_end):
+                v = ws.cell(row=row, column=vcol).value
+                if v is not None and str(v).strip():
+                    value = v
+                    break
+
+            # 类型转换
+            col_name = field_def["column"]
+            ftype = field_def["type"]
+            if ftype == "date":
+                converted = _parse_date(value)
+                if value is not None and _strip_cell(value) and converted is None:
+                    issues.append(QcIssue(
+                        source_filename=source, severity="warning",
+                        issue_type="BAD_DATE", location=f"键值区/{normalized}",
+                        message=f"日期无法解析: {_strip_cell(value)}",
+                    ))
+                project_data[col_name] = converted
+            elif ftype == "number":
+                converted = _parse_number(value)
+                if value is not None and _strip_cell(value) and converted is None:
+                    issues.append(QcIssue(
+                        source_filename=source, severity="warning",
+                        issue_type="BAD_NUMBER", location=f"键值区/{normalized}",
+                        message=f"数字无法解析: {_strip_cell(value)}",
+                    ))
+                project_data[col_name] = converted
+            else:
+                project_data[col_name] = _strip_cell(value)
+
+            # 必填检查
+            if field_def.get("required") and not project_data[col_name]:
+                issues.append(QcIssue(
+                    source_filename=source, severity="warning",
+                    issue_type="REQUIRED_EMPTY", location=f"键值区/{normalized}",
+                    message=f"必填字段为空: {normalized}",
+                ))
+
+    return issues
+
+
+# ── 辅助/表解析 — 不变 ──────────────────────────────────
 
 def _find_next_anchor(start_row: int, anchors: dict[str, int]) -> int:
-    """取 start_row 之后最近的锚点行号, 无则返回较大值。"""
     rows = [r for r in anchors.values() if r >= start_row]
     return min(rows) if rows else 99999
 
 
-def _match_key_value_label(normalized_label: str) -> dict | None:
-    """用归一化后的标签匹配 KEY_VALUE_FIELDS。"""
-    for key, field_def in KEY_VALUE_FIELDS.items():
-        if key in normalized_label or normalized_label in key:
-            return field_def
-    return None
-
-
-def _detect_header_row(
-    ws, start_row: int, end_row: int, keywords: list[str]
-) -> int | None:
-    """在行范围内找表头行: 同一行同时包含所有关键词。"""
+def _detect_header_row(ws, start_row: int, end_row: int, keywords: list[str]) -> int | None:
     for row in range(start_row, end_row):
         row_texts = {
             _strip_cell(ws.cell(row=row, column=c).value) or ""
@@ -267,7 +296,6 @@ def _detect_header_row(
 
 
 def _map_columns(ws, header_row: int, col_map: dict[str, str]) -> dict[str, int]:
-    """建立列名 → 列号的映射(包含匹配)。"""
     mapping: dict[str, int] = {}
     for col in range(1, ws.max_column + 1):
         hdr = _strip_cell(ws.cell(row=header_row, column=col).value) or ""
@@ -278,10 +306,7 @@ def _map_columns(ws, header_row: int, col_map: dict[str, str]) -> dict[str, int]
     return mapping
 
 
-def _parse_members(
-    ws, anchors: dict[str, int], source: str
-) -> tuple[list[Member], list[QcIssue]]:
-    """解析人员分工表。"""
+def _parse_members(ws, anchors: dict[str, int], source: str) -> tuple[list[Member], list[QcIssue]]:
     members: list[Member] = []
     issues: list[QcIssue] = []
     start = anchors["members"] + 1
@@ -293,7 +318,6 @@ def _parse_members(
     col_map = _map_columns(ws, header, MEMBER_COLUMN_MAP)
 
     for row in range(header + 1, end):
-        # 整行全空 → 停止
         if all(
             ws.cell(row=row, column=c).value is None
             or str(ws.cell(row=row, column=c).value).strip() == ""
@@ -303,7 +327,6 @@ def _parse_members(
 
         name = _strip_cell(ws.cell(row=row, column=col_map.get("name", 0)).value)
 
-        # 外协判定
         is_ext = False
         if name is None or name.strip() in EXTERNAL_MEMBER_NAMES:
             is_ext = True
@@ -314,7 +337,6 @@ def _parse_members(
                     message=f"人员姓名为{name}",
                 ))
 
-        # 多名字检测
         if name and any(sep in name for sep in MEMBER_NAME_SEPARATORS):
             issues.append(QcIssue(
                 source_filename=source, severity="warning",
@@ -347,10 +369,7 @@ def _parse_members(
     return members, issues
 
 
-def _parse_tasks(
-    ws, anchors: dict[str, int], source: str
-) -> tuple[list[Task], list[QcIssue]]:
-    """解析阶段任务表。"""
+def _parse_tasks(ws, anchors: dict[str, int], source: str) -> tuple[list[Task], list[QcIssue]]:
     tasks: list[Task] = []
     issues: list[QcIssue] = []
     start = anchors["tasks"] + 1
@@ -362,7 +381,6 @@ def _parse_tasks(
     col_map = _map_columns(ws, header, TASK_COLUMN_MAP)
 
     for row in range(header + 1, end + 1):
-        # 整行全空 → 停止
         if all(
             ws.cell(row=row, column=c).value is None
             or str(ws.cell(row=row, column=c).value).strip() == ""
@@ -372,7 +390,7 @@ def _parse_tasks(
 
         task_name = _strip_cell(ws.cell(row=row, column=col_map.get("task_name", 0)).value)
         if not task_name:
-            continue  # 空壳行跳过
+            continue
 
         tasks.append(Task(
             row_idx=row,

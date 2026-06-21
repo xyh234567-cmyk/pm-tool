@@ -1,7 +1,335 @@
-:root{--color-ink:#1d1d1f;--color-graphite:#707070;--color-fog:#f5f5f7;--color-snow:#fff;--color-silver-mist:#e8e8ed;--color-azure:#0071e3;--color-cobalt-link:#0066cc}
-*,::before,::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'SF Pro Text',-apple-system,'PingFang SC',sans-serif;background:var(--color-fog);color:var(--color-ink);-webkit-font-smoothing:antialiased}
-a{color:var(--color-cobalt-link);text-decoration:none}
-table{border-collapse:collapse}
-.nav-link{color:var(--color-graphite);text-decoration:none;padding:4px 0;border-bottom:2px solid transparent;transition:border-color .15s}
-.nav-link.active,.nav-link:hover{color:var(--color-ink);border-bottom-color:var(--color-ink)}
+/* ═══════════════════════════════════════════════════════════════
+   项目管理工具 — Apple Design System (生成自 DESIGN.md)
+   协议: 值对 DESIGN.md；Tailwind CDN 覆盖主力, 此处锁定制组件。
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── 字体导入 ───────────────────────────────────────────── */
+@font-face {
+  font-family: 'SF Pro Display';
+  src: local('SF Pro Display'), local('Inter'), local('sans-serif');
+}
+@font-face {
+  font-family: 'SF Pro Text';
+  src: local('SF Pro Text'), local('Inter'), local('sans-serif');
+}
+
+/* ── CSS Custom Properties (完整 token 体系) ────────────── */
+:root {
+  /* Colors */
+  --color-ink:          #1d1d1f;
+  --color-graphite:     #707070;
+  --color-slate:        #474747;
+  --color-ash:          #333333;
+  --color-fog:          #f5f5f7;
+  --color-snow:         #ffffff;
+  --color-obsidian:     #000000;
+  --color-silver-mist:  #e8e8ed;
+  --color-azure:        #0071e3;
+  --color-cobalt-link:  #0066cc;
+  --color-caution:      #b64400;
+
+  /* Typography — Families */
+  --font-display: 'SF Pro Display', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-text:    'SF Pro Text', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+
+  /* Typography — Scale (映射 DESIGN.md 等级) */
+  --text-caption:     12px;
+  --leading-caption:  1.33;
+  --tracking-caption: -0.003em;
+  --text-body-sm:     14px;
+  --leading-body-sm:  1.43;
+  --tracking-body-sm: -0.003em;
+  --text-body:        17px;
+  --leading-body:     1.47;
+  --tracking-body:    -0.006em;
+  --text-subheading:  20px;
+  --leading-subheading: 1.4;
+  --tracking-subheading: -0.01em;
+  --text-heading-sm:  24px;
+  --leading-heading-sm: 1.29;
+  --tracking-heading-sm: -0.015em;
+  --text-heading:     40px;
+  --leading-heading:  1.17;
+  --tracking-heading: -0.015em;
+  --text-heading-lg:  56px;
+  --leading-heading-lg: 1.07;
+  --tracking-heading-lg: -0.016em;
+  --text-display:     96px;
+  --leading-display:  1.04;
+  --tracking-display: -0.022em;
+
+  /* Typography — Weights */
+  --weight-light:    300;
+  --weight-regular:  400;
+  --weight-medium:   500;
+  --weight-semibold: 600;
+  --weight-bold:     700;
+
+  /* Spacing — base 4px */
+  --spacing-4:   4px;
+  --spacing-8:   8px;
+  --spacing-12:  12px;
+  --spacing-16:  16px;
+  --spacing-20:  20px;
+  --spacing-24:  24px;
+  --spacing-28:  28px;
+  --spacing-32:  32px;
+  --spacing-40:  40px;
+  --spacing-44:  44px;
+  --spacing-48:  48px;
+  --spacing-52:  52px;
+  --spacing-76:  76px;
+  --spacing-80:  80px;
+  --spacing-120: 120px;
+  --spacing-144: 144px;
+
+  /* Border Radius */
+  --radius-cards:          28px;
+  --radius-buttons:        999px;
+  --radius-navitems:       980px;
+  --radius-pillbuttons:    999px;
+  --radius-featurelinks:   28px;
+  --radius-smallbuttons:   10px;
+  --radius-roundedbuttons: 36px;
+
+  /* Surfaces */
+  --surface-canvas:         #f5f5f7;
+  --surface-card:           #ffffff;
+  --surface-recessed:       #f5f5f7;
+  --surface-frosted-control: rgba(210,210,215,0.64);
+  --surface-dark-stage:     #000000;
+
+  /* Motion */
+  --duration-page:    0.344s;
+  --duration-quick:   0.1s;
+  --duration-scroll:  0.32s;
+  --ease-default:     ease;
+}
+
+/* ── 全局重置 ──────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-text);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  letter-spacing: var(--tracking-body);
+  line-height: var(--leading-body);
+  background: var(--surface-canvas);
+  color: var(--color-ink);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ── 排版基础 ──────────────────────────────────────────── */
+h1, h2, h3, h4 { font-family: var(--font-display); font-weight: var(--weight-bold); }
+h1 { font-size: var(--text-heading-lg); line-height: var(--leading-heading-lg); letter-spacing: var(--tracking-heading-lg); }
+h2 { font-size: var(--text-heading); line-height: var(--leading-heading); letter-spacing: var(--tracking-heading); }
+h3 { font-size: var(--text-heading-sm); line-height: var(--leading-heading-sm); letter-spacing: var(--tracking-heading-sm); }
+
+a {
+  color: var(--color-cobalt-link);
+  text-decoration: none;
+  transition: color var(--duration-quick) var(--ease-default);
+}
+a:hover { text-decoration: underline; }
+
+/* ── 表格 ──────────────────────────────────────────────── */
+table { border-collapse: collapse; width: 100%; }
+
+/* ── 导航 ──────────────────────────────────────────────── */
+.nav-link {
+  color: var(--color-graphite);
+  text-decoration: none;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+  transition: border-color var(--duration-quick) var(--ease-default), color var(--duration-quick) var(--ease-default);
+  letter-spacing: var(--tracking-body-sm);
+}
+.nav-link.active,
+.nav-link:hover {
+  color: var(--color-ink);
+  border-bottom-color: var(--color-ink);
+}
+
+/* ═══════════════════════════════════════════════════════════
+   组件级样式（DESIGN.md §Components）
+   ═══════════════════════════════════════════════════════════ */
+
+/* ── Primary Buy Button ─────────────────────────────────── */
+.btn-primary {
+  background: var(--color-azure);
+  color: var(--color-snow);
+  border: none;
+  border-radius: var(--radius-pillbuttons);
+  padding: 8px 16px;
+  font-family: var(--font-text);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  cursor: pointer;
+  transition: background var(--duration-quick) var(--ease-default), opacity var(--duration-quick) var(--ease-default);
+}
+.btn-primary:hover { opacity: 0.92; }
+.btn-primary:active { opacity: 0.84; }
+
+/* ── Ghost Text Button ──────────────────────────────────── */
+.btn-ghost {
+  background: transparent;
+  color: var(--color-ink);
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  font-family: var(--font-text);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  cursor: pointer;
+  transition: color var(--duration-quick) var(--ease-default);
+}
+.btn-ghost:hover { color: var(--color-azure); }
+
+/* ── Rounded Ghost (Feature Nav Tab) ────────────────────── */
+.btn-ghost-rounded {
+  background: transparent;
+  color: var(--color-ink);
+  border: none;
+  border-radius: var(--radius-featurelinks);
+  padding: 6px 12px;
+  font-family: var(--font-text);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  cursor: pointer;
+  transition: background var(--duration-quick) var(--ease-default), color var(--duration-quick) var(--ease-default);
+}
+.btn-ghost-rounded:hover,
+.btn-ghost-rounded.active {
+  background: var(--color-silver-mist);
+}
+
+/* ── Frosted Pill Selector ──────────────────────────────── */
+.btn-frosted {
+  background: var(--surface-frosted-control);
+  color: rgba(0,0,0,0.56);
+  border: none;
+  border-radius: var(--radius-roundedbuttons);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 6px 14px;
+  font-family: var(--font-text);
+  font-size: var(--text-body-sm);
+  cursor: pointer;
+  transition: background var(--duration-quick) var(--ease-default);
+}
+.btn-frosted:hover { background: rgba(210,210,215,0.8); }
+
+/* ── Dark Pill Button ───────────────────────────────────── */
+.btn-dark-pill {
+  background: var(--color-obsidian);
+  color: var(--color-snow);
+  border: none;
+  border-radius: var(--radius-pillbuttons);
+  padding: 8px 16px;
+  font-family: var(--font-text);
+  font-size: var(--text-body);
+  font-weight: var(--weight-regular);
+  cursor: pointer;
+  transition: opacity var(--duration-quick) var(--ease-default);
+}
+.btn-dark-pill:hover { opacity: 0.85; }
+
+/* ── Card 组件 ──────────────────────────────────────────── */
+.card-white {
+  background: var(--surface-card);
+  border-radius: var(--radius-cards);
+  box-shadow: none;                /* Apple 风格: 零阴影, 靠色值浮起 */
+}
+.card-fog {
+  background: var(--surface-recessed);
+  border-radius: var(--radius-cards);
+  box-shadow: none;
+}
+.card-dark {
+  background: var(--surface-dark-stage);
+  color: var(--color-snow);
+  border-radius: var(--radius-cards);
+  box-shadow: none;
+}
+
+/* ── Badge 样式 ─────────────────────────────────────────── */
+.badge-new {
+  background: transparent;
+  color: var(--color-ink);
+  font-family: var(--font-text);
+  font-size: var(--text-caption);
+  font-weight: var(--weight-semibold);
+}
+
+/* ── Product Swatch Chip ────────────────────────────────── */
+.swatch-chip {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-pillbuttons);
+  display: inline-block;
+  border: 3px solid transparent;
+  cursor: pointer;
+  transition: border-color var(--duration-quick) var(--ease-default);
+}
+.swatch-chip.selected { border-color: var(--color-ink); }
+
+/* ── Carousel Pagination Dot ────────────────────────────── */
+.dot-active {
+  background: var(--color-ink);
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pillbuttons);
+  display: inline-block;
+}
+.dot-inactive {
+  background: var(--surface-frosted-control);
+  width: 8px;
+  height: 8px;
+  border-radius: var(--radius-pillbuttons);
+  display: inline-block;
+}
+
+/* ── 进度条 ─────────────────────────────────────────────── */
+.progress-bar {
+  height: 8px;
+  background: var(--color-silver-mist);
+  border-radius: var(--radius-pillbuttons);
+  overflow: hidden;
+}
+.progress-bar-fill {
+  height: 100%;
+  border-radius: var(--radius-pillbuttons);
+  transition: width var(--duration-page) var(--ease-default);
+}
+
+/* ── 风险/状态标签 ──────────────────────────────────────── */
+.tag-risk-high   { background: #ff3b30; color: #fff; }
+.tag-risk-medium { background: #ff9f0a; color: #fff; }
+.tag-risk-low    { background: #34c759; color: #fff; }
+
+.tag-done    { background: #34c759; color: #fff; }
+.tag-doing   { background: #ff9f0a; color: #fff; }
+.tag-todo    { background: #aeaeb2; color: #fff; }
+.tag-paused  { background: var(--color-graphite); color: #fff; }
+
+/* ── 动效辅助 ──────────────────────────────────────────── */
+.transition-base {
+  transition: all var(--duration-page) var(--ease-default);
+}
+.transition-quick {
+  transition: all var(--duration-quick) var(--ease-default);
+}
+
+/* ── 滚动驱动渐显（基础设施, JS 可选绑定） ─────────────── */
+.section-reveal {
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity var(--duration-page) var(--ease-default),
+              transform var(--duration-page) var(--ease-default);
+}
+.section-reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}

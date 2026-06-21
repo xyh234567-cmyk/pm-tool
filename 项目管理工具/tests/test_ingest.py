@@ -71,21 +71,46 @@ def test_parse_number():
     assert _parse_number(None) is None
 
 
-# ── parser 解析 ────────────────────────────────────────
+# ── parser 解析(新键值逻辑: 逐行扫描所有列) ─────────────
 
 def test_parse_standard_file():
-    """标准格式: 4 区块可解析, 表内 biz_id=125。"""
+    """标准格式: 验证主表所有字段 + 次列标签(D/E列)被正确解析。"""
     filepath = FIXTURES / "RW2026-001-隔离网关【20260617】.xlsx"
     meta = parse_filename(filepath)
     project, issues = parse(meta, filepath)
 
-    assert project.biz_id == "125"
+    # 主键
+    assert project.biz_id == "RW2026-001"
     assert project.snap_date == "2026-06-17"
+
+    # A列标签 + 紧邻值
     assert project.project_name == "隔离网关项目"
+    assert project.customer == "吉通力/成都核动力院"
+    assert project.setup_date == "2026-04-16"
     assert project.progress_pct == 65.0
+    assert project.owner_name == "刘长城"
+    assert project.last_update_date == "2026-06-17"
+    assert project.form_status == "填写中"
+
+    # D/E列标签(次列) — 旧解析器拿不到这些
+    assert project.biz_type == "研制项目", f"biz_type expected '研制项目', got {project.biz_type}"
+    assert project.customer_industry == "智能制造", f"customer_industry got {project.customer_industry}"
+    assert project.plan_deliver_date == "2026-06-15", f"plan_deliver_date got {project.plan_deliver_date}"
+    assert project.risk_level == "低风险", f"risk_level got {project.risk_level}"
+    assert project.pm_name == "徐裕蘅", f"pm_name got {project.pm_name}"
+
+    # 存在但值为空的标签
+    assert project.stage_status == "进行中"
+    assert project.contract_status is None
+    assert project.contract_no is None
+    assert project.contract_amount is None
+    assert project.received_amount is None
+    assert project.gross_margin_pct is None
+    assert project.actual_deliver_date is None
+
+    # 子表
     assert len(project.members) > 0
     assert len(project.tasks) > 0
-    assert any(not m.is_external for m in project.members)
 
 
 def test_parse_old_format_file():
@@ -102,6 +127,42 @@ def test_parse_old_format_file():
 
     assert len(project.members) > 0
     assert len(project.tasks) > 0
+
+
+def test_parse_all_kv_fields_from_fixture():
+    """逐行扫描所有列后, 应比对的真实字段值清单。"""
+    filepath = FIXTURES / "RW2026-001-隔离网关【20260617】.xlsx"
+    meta = parse_filename(filepath)
+    project, _ = parse(meta, filepath)
+
+    expected = {
+        "biz_id": "RW2026-001",
+        "project_name": "隔离网关项目",
+            "biz_type": "研制项目",
+            "stage_status": "进行中",
+            "customer": "吉通力/成都核动力院",
+        "customer_industry": "智能制造",
+        "description": "为成都核动力院研制定制化隔离网关设备，含嵌入式软件开发",
+        "setup_date": "2026-04-16",
+        "plan_deliver_date": "2026-06-15",
+        "actual_deliver_date": None,
+        "progress_pct": 65.0,
+        "risk_level": "低风险",
+        "current_issue": None,
+        "contract_status": None,
+        "contract_no": None,
+        "contract_amount": None,
+        "invoiced_amount": None,
+        "received_amount": None,
+        "gross_margin_pct": None,
+        "owner_name": "刘长城",
+        "pm_name": "徐裕蘅",
+        "last_update_date": "2026-06-17",
+        "form_status": "填写中",
+    }
+    for field, want in expected.items():
+        got = getattr(project, field)
+        assert got == want, f"Field {field}: expected {want!r}, got {got!r}"
 
 
 # ── scanner 编排 ────────────────────────────────────────
@@ -129,17 +190,13 @@ def test_scan_nas_not_found(db_path):
         scan_run("/nonexistent/path/nas", db_path)
 
 
-# ── 去重 ────────────────────────────────────────────────
-
 def test_dup_same_biz_date(db_path):
-    """同(biz_id,snap_date)两个文件, 只入库一条, 另一条记 DUP。"""
     src = FIXTURES / "RW2026-001-隔离网关【20260617】.xlsx"
     tmp = tempfile.mkdtemp(prefix="dup_nas_")
     tp = Path(tmp)
     try:
         shutil.copy2(src, tp / "RW2026-001-隔离网关【20260617】.xlsx")
         import time; time.sleep(0.06)
-        # 副本用不同名称但相同(biz_id,snap_date): 名字段不参与分组
         shutil.copy2(src, tp / "RW2026-001-隔离网关副本【20260617】.xlsx")
         stats = scan_run(str(tp), db_path)
         assert stats["inserted"] + stats["updated"] == 1
