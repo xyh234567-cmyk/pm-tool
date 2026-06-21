@@ -10,7 +10,7 @@ BIZ_ID_PATTERN = re.compile(r"^RW\d{4}-\d{3}$")
 BIZ_ID_EXAMPLE = "RW2026-001"
 
 # ── 文件名规则 ──────────────────────────────────────────
-FILENAME_PATTERN = re.compile(r"^(?P<biz_id>.+?)-(?P<name>.+?)【(?P<date>\d{8})】\.xlsx$")
+FILENAME_PATTERN = re.compile(r"^(?P<biz_id>.+)-(?P<name>[^【]+)【(?P<date>\d{8})】\.xlsx$")
 FILENAME_DATE_FORMAT = "%Y%m%d"
 FILENAME_IGNORE_PREFIX = ["~$"]           # 临时锁文件, 扫描跳过
 
