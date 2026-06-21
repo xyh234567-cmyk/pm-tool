@@ -1,0 +1,55 @@
+# 枚举与硬常量 · 机器照搬
+# 与 02-数据模型与Excel解析规格.md 一致;若有冲突,以本文件为准。
+
+biz_id:
+  regex: '^RW\d{4}-\d{3}$'        # 标准业务ID格式,如 RW2026-001
+  example: RW2026-001
+
+filename:
+  # 文件名:{业务ID}-{名称}【YYYYMMDD】.xlsx
+  regex: '^(?P<biz_id>.+?)-(?P<name>.+?)【(?P<date>\d{8})】\.xlsx$'
+  example: RW2026-001-隔离网关【20260617】.xlsx
+  date_format_in_name: '%Y%m%d'
+  ignore_prefix: ['~$']           # 临时锁文件,扫描跳过
+
+severity:
+  - error
+  - warning
+
+# 质检问题类型 -> 默认严重度
+qc_issue_types:
+  FILE_OPEN_FAIL: error
+  SHEET_MISSING: warning
+  BIZ_ID_MISSING: error
+  BIZ_ID_FORMAT: warning
+  ID_FILENAME_MISMATCH: warning
+  REQUIRED_EMPTY: warning
+  BAD_DATE: warning
+  BAD_NUMBER: warning
+  MEMBER_EXTERNAL: warning
+  MULTI_NAME_IN_MEMBER: warning
+  WORKLOAD_MISSING: warning
+  DUP_SNAPSHOT_FILE: warning
+  FILENAME_FORMAT: warning
+
+# 人员姓名属于"非真实人员"的取值 → is_external=1,不参与资源撞车
+external_member_names:
+  - 外协
+  - '?'
+  - '？'
+  - ''            # 空
+
+# 人员姓名一格多名字的分隔符(命中则记 MULTI_NAME_IN_MEMBER)
+member_name_separators: ["\n", "、", "，", ",", "/"]
+
+# 任务 status 文本 → 甘特颜色语义(包含匹配)
+task_status_color:
+  done:  [已完成, 完成]
+  doing: [进行中, 部分完成]
+  todo:  [未开始, '']
+
+# 延期判定里"已完成"的状态集合
+done_statuses: [已完成, 完成]
+
+# 风险等级(展示用标签;非强约束,仅约定常见值)
+risk_levels: [低风险, 中风险, 高风险]

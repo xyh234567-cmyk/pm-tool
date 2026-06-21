@@ -1,0 +1,23 @@
+# 口径阈值与算法参数 · 机器照搬
+# 改这里即改口径;任何修改须同步追加到 决策记录.md。
+
+deliver_soon_days: 7            # 距交付 0<=days<=该值 → 临近(黄)
+workload_conflict_pct: 100     # 资源撞车阈值:重叠项目投入%之和 > 该值
+
+delay:
+  task_rule: "plan_end 非空 且 plan_end < today 且 未完成"
+  # 未完成 = status 不在 done_statuses 且 (progress_pct 为空 或 < 100)
+  project_rules:
+    - "存在任一延期任务"
+    - "plan_deliver_date 非空 且 < today 且 actual_deliver_date 为空"
+
+resource_conflict:
+  min_overlap_projects: 2      # 至少2个时间重叠项目才构成撞车
+  exclude_external: true       # is_external=1 的人员行不参与
+  workload_field: workload_pct
+  require_fields: [join_start, join_end, workload_pct]  # 缺任一→不参与精确计算,列"数据不全"
+  interval_inclusive_end: true # 参与结束日含当天(边界用 end+1天)
+  flag_includes_today: true    # 冲突段含 today 的优先级更高(当前正在撞)
+
+# 所有分析(延期/撞车/距交付)实时计算,不落库。
+analytics_persisted: false
