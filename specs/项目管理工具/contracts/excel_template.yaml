@@ -21,7 +21,13 @@ label_normalize:
   strip_paren_suffix: true
 
 # === 区块一/二:键值对 → snapshot 列 ===
-# 取值:标签单元格向右第一个非空单元格;找不到标签或值空 → NULL(不报错)
+# ⚠ 模板是"多列网格表单":同一行可能有多对"标签-值",标签分布在 A/C/D/G 等多个列,**不只 A 列**。
+# 解析规则(务必按此,不能只读 A 列标签):
+#   1. 逐行扫描所有列,凡单元格归一后命中下方某标签,即视为一个"标签单元格";
+#   2. 该标签的值 = 从其右侧相邻单元格起、到"本行下一个标签单元格之前"区间内的第一个非空值;
+#      值为空时**不得越过下一个标签去取值**(否则会把下一对的标签误当成值);
+#   3. 每个命中字段都要跑必填检查(required),漏看标签=漏了必填校验。
+# 找不到标签 → 该字段 NULL(不报错);标签命中但值空 → NULL + (若 required) REQUIRED_EMPTY。
 key_value_fields:
   业务ID:            {column: biz_id,            type: text,   required: true}
   业务类型:          {column: biz_type,          type: text}
