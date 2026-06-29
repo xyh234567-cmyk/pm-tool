@@ -1,0 +1,3 @@
+- **L1 · 符号方向(阶段1)**:`days_from_today` 约定"正数=已过去"。
+- **L8 · 旧版 L8(spoke 版)**:spoke 的 L8 原文,与 hub 不同。
+- **L99 · Spoke 专属教训**:这条只有 spoke 有。

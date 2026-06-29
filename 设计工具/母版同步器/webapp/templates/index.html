@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>母版同步器</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+    background: #f4f5f7; color: #1f2329; line-height: 1.55; padding: 0 0 60px;
+  }
+  header {
+    background: #fff; border-bottom: 1px solid #e4e6eb;
+    padding: 16px 28px; display: flex; align-items: baseline; gap: 14px;
+  }
+  header h1 { font-size: 19px; font-weight: 700; }
+  header .hub { font-size: 12px; color: #8a9099; font-family: ui-monospace, Menlo, monospace; }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 0 28px; }
+  .tabs { display: flex; gap: 4px; margin: 22px 0 0; }
+  .tab {
+    padding: 9px 18px; font-size: 14px; cursor: pointer; border: none;
+    background: transparent; color: #5a616b; border-radius: 8px 8px 0 0; font-weight: 500;
+  }
+  .tab.active { background: #fff; color: #1a73e8; font-weight: 600; box-shadow: 0 -1px 0 #e4e6eb inset; }
+  .controls {
+    background: #fff; border: 1px solid #e4e6eb; border-radius: 0 10px 10px 10px;
+    padding: 16px 20px; display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+  }
+  .toggle { display: flex; align-items: center; gap: 10px; }
+  .switch {
+    position: relative; width: 132px; height: 34px; border-radius: 17px;
+    background: #e3f0e3; cursor: pointer; display: flex; align-items: center;
+    font-size: 12.5px; font-weight: 600; user-select: none; border: 1px solid #cfe3cf;
+  }
+  .switch .knob {
+    position: absolute; width: 64px; height: 28px; border-radius: 14px; background: #fff;
+    left: 3px; top: 2px; box-shadow: 0 1px 3px rgba(0,0,0,.18); transition: left .15s;
+  }
+  .switch .lbl { flex: 1; text-align: center; z-index: 1; }
+  .switch.apply { background: #fbe9d8; border-color: #f0cba0; }
+  .switch.apply .knob { left: 65px; }
+  .switch .lbl-dry { color: #2e7d32; } .switch .lbl-apply { color: #9a9a9a; }
+  .switch.apply .lbl-dry { color: #9a9a9a; } .switch.apply .lbl-apply { color: #c2680f; }
+  .btn {
+    padding: 9px 18px; border-radius: 8px; border: 1px solid #d0d4da; background: #fff;
+    font-size: 13.5px; cursor: pointer; font-weight: 600; color: #2a2f36;
+  }
+  .btn.primary { background: #1a73e8; color: #fff; border-color: #1a73e8; }
+  .btn.primary:disabled { background: #c4d6f3; border-color: #c4d6f3; cursor: not-allowed; }
+  .spacer { flex: 1; }
+  .banner { margin: 14px 0 4px; padding: 11px 16px; border-radius: 9px; font-size: 13.5px; font-weight: 500; }
+  .banner.dry { background: #e7f4e8; color: #2e7d32; border: 1px solid #c6e6c8; }
+  .banner.apply { background: #fdf0e3; color: #b3600d; border: 1px solid #f3d6ad; display: none; }
+  .summary { font-size: 13px; color: #6b7280; margin: 16px 0 8px; }
+  .spoke { background: #fff; border: 1px solid #e4e6eb; border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+  .spoke-head { padding: 13px 18px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #eef0f3; }
+  .spoke-head .name { font-weight: 700; font-size: 14.5px; }
+  .row {
+    padding: 11px 18px; display: flex; align-items: center; gap: 12px;
+    border-bottom: 1px solid #f3f4f6; font-size: 13.5px;
+  }
+  .row:last-child { border-bottom: none; }
+  .row input[type=checkbox] { width: 16px; height: 16px; accent-color: #1a73e8; cursor: pointer; }
+  .row .file { font-weight: 600; min-width: 120px; }
+  .badge { font-size: 11.5px; padding: 2px 9px; border-radius: 11px; font-weight: 600; white-space: nowrap; }
+  .b-out { background: #fde7e3; color: #c0392b; }
+  .b-ok  { background: #e8f3e9; color: #2e7d32; }
+  .b-miss{ background: #fff3da; color: #9a6a00; }
+  .b-err { background: #efe7fb; color: #7b3fd4; }
+  .diff-toggle { color: #1a73e8; cursor: pointer; font-size: 12.5px; margin-left: auto; user-select: none; }
+  .diff {
+    display: none; margin: 0 18px 12px; border: 1px solid #e4e6eb; border-radius: 8px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 12px; overflow: hidden;
+  }
+  .diff div { padding: 2px 12px; white-space: pre-wrap; }
+  .diff .add { background: #e6ffed; color: #22863a; }
+  .diff .del { background: #ffeef0; color: #b31d28; }
+  .diff .ctx { color: #6a737d; }
+  .disabled-note { font-size: 11.5px; color: #aab; margin-left: 8px; }
+  .report {
+    margin-top: 22px; padding: 14px 18px; background: #eef3fb; border: 1px solid #d4e2f7;
+    border-radius: 9px; font-size: 13px; color: #2c5aa0;
+  }
+  .report code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; }
+  .apply-results { margin-top: 18px; }
+  .apply-results .item { padding: 8px 14px; margin-bottom: 6px; border-radius: 6px; font-size: 13px; }
+  .apply-results .ok { background: #e6ffed; color: #22863a; border: 1px solid #b6e6c4; }
+  .apply-results .fail { background: #ffeef0; color: #b31d28; border: 1px solid #f3c8cc; }
+</style>
+</head>
+<body>
+<header>
+  <h1>母版同步器</h1>
+  <span class="hub" id="hubPath">hub：加载中…</span>
+</header>
+<div class="wrap">
+  <div class="tabs top-tabs">
+    <button class="tab active" data-view="sync" id="tabSync">同步母版</button>
+    <button class="tab" data-view="create" id="tabCreate">＋新建项目</button>
+  </div>
+
+  <!-- 新建项目视图 -->
+  <div id="viewCreate" style="display:none;">
+    <div style="background:#fff;border:1px solid #e4e6eb;border-radius:10px;padding:24px;margin-top:16px;">
+      <h2 style="font-size:16px;margin-bottom:16px;">新建 spoke 项目</h2>
+      <div style="margin-bottom:12px;">
+        <label style="font-weight:600;display:block;margin-bottom:4px;">项目名称</label>
+        <input type="text" id="projName" placeholder="如: 产品规划" style="width:100%;max-width:320px;padding:8px 12px;border:1px solid #d0d4da;border-radius:6px;font-size:14px;">
+      </div>
+      <p style="font-size:12px;color:#8a9099;margin-bottom:16px;">从 hub 拷入 CLAUDE.md / AGENTS.md / 审查清单.md，并建骨架文件。同名已存在会拒绝，不覆盖。</p>
+      <button class="btn primary" id="btnCreate" style="margin-bottom:16px;">创建项目</button>
+      <div id="createResult" style="display:none;padding:14px;border-radius:8px;font-size:13px;"></div>
+    </div>
+  </div>
+
+  <!-- 同步视图 -->
+  <div id="viewSync">
+  <div class="tabs" id="tabs">
+    <button class="tab active" data-mode="general">通用区下发</button>
+    <button class="tab" data-mode="up">教训上行 ↑</button>
+    <button class="tab" data-mode="down">教训下行 ↓</button>
+  </div>
+  <div class="controls">
+    <div class="toggle">
+      <span style="font-size:13px;color:#5a616b;">运行模式</span>
+      <div class="switch" id="sw">
+        <span class="knob"></span>
+        <span class="lbl lbl-dry">预览</span>
+        <span class="lbl lbl-apply">写入</span>
+      </div>
+    </div>
+    <button class="btn" id="btnRescan">↻ 重新扫描</button>
+    <div class="spacer"></div>
+    <button class="btn primary" id="applyBtn" disabled>应用所选（先备份）</button>
+  </div>
+  <div class="banner dry" id="bDry">🟢 预览模式（dry-run）：只比对、只展示，<b>不会修改任何文件</b>。</div>
+  <div class="banner apply" id="bApply">🟠 写入模式（apply）：勾选的项将被写入目标文件，<b>每个文件写前自动备份</b>（<code>.bak.&lt;时间戳&gt;</code>）。</div>
+  <div class="summary" id="summary">加载中…</div>
+  <div id="content"></div>
+  <div class="apply-results" id="applyResults"></div>
+  </div><!-- /viewSync -->
+</div>
+
+<script>
+  var mode = "general";
+  var isApply = false;
+
+  var stateLabels = {
+    "outdated": { cls: "b-out", zh: "过时" },
+    "up_to_date": { cls: "b-ok", zh: "最新" },
+    "missing_file": { cls: "b-miss", zh: "缺件" },
+    "structure_error": { cls: "b-err", zh: "结构异常" },
+    "new": { cls: "b-out", zh: "新增候选" },
+    "update": { cls: "b-out", zh: "更新候选" },
+    "already_synced": { cls: "b-ok", zh: "已同步" },
+    "conflict": { cls: "b-err", zh: "冲突" },
+    "new_in_hub": { cls: "b-out", zh: "hub 新增" },
+    "content_changed": { cls: "b-ok", zh: "内容变更(仅提示)" },
+    "up_to_date": { cls: "b-ok", zh: "已最新" },
+    "spoke_only": { cls: "b-ok", zh: "spoke 专属" }
+  };
+
+  function scan() {
+    document.getElementById("content").innerHTML = '<div style="padding:20px;text-align:center;color:#8a9099;">扫描中…</div>';
+    fetch("/api/scan?mode=" + mode)
+      .then(function(r) { return r.json(); })
+      .then(function(data) { render(data); })
+      .catch(function(e) {
+        document.getElementById("content").innerHTML = '<div style="padding:20px;color:#c0392b;">扫描失败: ' + e.message + '</div>';
+      });
+  }
+
+  function render(items) {
+    if (!items || items.length === 0) {
+      var msg = mode === "general" ? "无受管 spoke 或已全部最新。" :
+                mode === "up" ? "无上行候选。" : "所有 spoke 均已最新。";
+      document.getElementById("content").innerHTML = '<div style="padding:20px;text-align:center;color:#8a9099;">' + msg + '</div>';
+      document.getElementById("summary").textContent = "无待同步项。";
+      return;
+    }
+
+    var bySpoke = {};
+    items.forEach(function(r) {
+      var sn = r.spoke_name;
+      if (!bySpoke[sn]) bySpoke[sn] = [];
+      bySpoke[sn].push(r);
+    });
+
+    var totalOutdated = items.filter(function(r) { return r.can_apply; }).length;
+    document.getElementById("summary").textContent =
+      "扫描到 " + Object.keys(bySpoke).length + " 个受管项目 · " + totalOutdated + " 项可同步";
+
+    var html = "";
+    Object.keys(bySpoke).sort().forEach(function(sn) {
+      var rows = bySpoke[sn];
+      html += '<div class="spoke"><div class="spoke-head"><span class="name">' + sn + '</span></div>';
+      rows.forEach(function(r, idx) {
+        var st = stateLabels[r.state] || { cls: "b-miss", zh: r.state };
+        var id = "item-" + sn.replace(/[^a-zA-Z0-9]/g, "_") + "-" + idx;
+        var chk = '';
+        if (r.can_apply && isApply) {
+          chk = '<input type="checkbox" data-id="' + id + '" data-spoke="' + sn + '" data-file="' + (r.file_name || "") + '" data-lnum="' + (r.l_number || "") + '">';
+        } else if (!r.can_apply) {
+          chk = '<input type="checkbox" disabled>';
+        }
+        var fname = r.file_name || ("L" + r.l_number);
+        var diffBtn = "";
+        if (r.diff_text) {
+          diffBtn = '<span class="diff-toggle" onclick="toggleDiff(this)">查看差异 ▾</span>';
+        }
+        html += '<div class="row">' + chk +
+          '<span class="file">' + fname + '</span>' +
+          '<span class="badge ' + st.cls + '">' + st.zh + '</span>' +
+          diffBtn;
+        if (!r.can_apply) html += '<span class="disabled-note">无需同步</span>';
+        html += '</div>';
+        if (r.diff_text) {
+          html += '<div class="diff">' + renderDiff(r.diff_text) + '</div>';
+        }
+      });
+      html += '</div>';
+    });
+    document.getElementById("content").innerHTML = html;
+    updateApplyBtn();
+  }
+
+  function renderDiff(diffText) {
+    var lines = diffText.split("\n");
+    var html = "";
+    lines.forEach(function(line) {
+      if (line.startsWith("+")) html += '<div class="add">' + escapeHtml(line) + '</div>';
+      else if (line.startsWith("-")) html += '<div class="del">' + escapeHtml(line) + '</div>';
+      else html += '<div class="ctx">' + escapeHtml(line) + '</div>';
+    });
+    return html;
+  }
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+
+  function toggleDiff(el) {
+    var d = el.closest(".row").nextElementSibling;
+    var open = d.style.display === "block";
+    d.style.display = open ? "none" : "block";
+    el.textContent = open ? "查看差异 ▾" : "收起差异 ▴";
+  }
+
+  function updateApplyBtn() {
+    var btn = document.getElementById("applyBtn");
+    if (!isApply) {
+      btn.disabled = true;
+      return;
+    }
+    var checks = document.querySelectorAll("#content input[type=checkbox]:not([disabled]):checked");
+    btn.disabled = checks.length === 0;
+  }
+
+  document.getElementById("sw").onclick = function() {
+    isApply = !isApply;
+    var sw = document.getElementById("sw");
+    if (isApply) sw.classList.add("apply"); else sw.classList.remove("apply");
+    document.getElementById("bDry").style.display = isApply ? "none" : "block";
+    document.getElementById("bApply").style.display = isApply ? "block" : "none";
+    scan();
+  };
+
+  document.getElementById("btnRescan").onclick = function() { scan(); };
+
+  document.getElementById("applyBtn").onclick = function() {
+    var checks = document.querySelectorAll("#content input[type=checkbox]:not([disabled]):checked");
+    var items = [];
+    checks.forEach(function(cb) {
+      var item = { spoke_name: cb.dataset.spoke };
+      if (cb.dataset.file) item.file_name = cb.dataset.file;
+      if (cb.dataset.lnum) item.l_number = parseInt(cb.dataset.lnum);
+      items.push(item);
+    });
+    if (items.length === 0) return;
+
+    document.getElementById("applyBtn").disabled = true;
+    document.getElementById("applyResults").innerHTML = '<div style="padding:10px;color:#2c5aa0;">写入中…</div>';
+
+    fetch("/api/apply", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ mode: mode, items: items })
+    }).then(function(r) { return r.json(); }).then(function(results) {
+      renderApplyResults(results);
+      scan();
+    }).catch(function(e) {
+      document.getElementById("applyResults").innerHTML = '<div class="item fail">请求失败: ' + e.message + '</div>';
+      document.getElementById("applyBtn").disabled = false;
+    });
+  };
+
+  function renderApplyResults(results) {
+    var html = "";
+    results.forEach(function(r) {
+      if (r.success) {
+        html += '<div class="item ok">✅ 已写入' + (r.backup_path ? '，备份: <code>' + r.backup_path + '</code>' : '') + '</div>';
+      } else {
+        html += '<div class="item fail">❌ ' + escapeHtml(r.error) + '</div>';
+      }
+    });
+    document.getElementById("applyResults").innerHTML = '<div style="font-weight:600;margin-bottom:8px;">写入结果</div>' + html;
+  }
+
+  document.querySelectorAll(".tab").forEach(function(t) {
+    t.onclick = function() {
+      document.querySelectorAll(".tab").forEach(function(t2) { t2.classList.remove("active"); });
+      t.classList.add("active");
+      mode = t.dataset.mode;
+      scan();
+    };
+  });
+
+  // 监听 checkbox 变化
+  document.getElementById("content").addEventListener("change", function(e) {
+    if (e.target.type === "checkbox") updateApplyBtn();
+  });
+
+  scan();
+
+  // ── 新建项目 ──
+  var viewCreate = document.getElementById("viewCreate");
+  var viewSync = document.getElementById("viewSync");
+  var tabSync = document.getElementById("tabSync");
+  var tabCreate = document.getElementById("tabCreate");
+  var projName = document.getElementById("projName");
+  var btnCreate = document.getElementById("btnCreate");
+  var createResult = document.getElementById("createResult");
+
+  tabSync.onclick = function() {
+    viewSync.style.display = "block";
+    viewCreate.style.display = "none";
+    tabSync.classList.add("active");
+    tabCreate.classList.remove("active");
+    if (mode) scan();
+  };
+  tabCreate.onclick = function() {
+    viewSync.style.display = "none";
+    viewCreate.style.display = "block";
+    tabSync.classList.remove("active");
+    tabCreate.classList.add("active");
+  };
+  btnCreate.onclick = function() {
+    var name = projName.value.trim();
+    if (!name) { createResult.style.display = "block"; createResult.style.background = "#ffeef0"; createResult.textContent = "请输入项目名称"; return; }
+    btnCreate.disabled = true;
+    createResult.style.display = "block";
+    createResult.style.background = "#eef3fb";
+    createResult.textContent = "创建中…";
+    fetch("/api/create-project", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({name: name})
+    }).then(function(r) { return r.json(); }).then(function(data) {
+      if (data.success) {
+        createResult.style.background = "#e6ffed";
+        createResult.innerHTML = "<b>✅ 项目已创建</b><br>路径: <code>" + data.project_dir + "</code><br>拷入: " + data.created_files.slice(0,3).join(", ") + "<br>生成: " + data.created_files.slice(3).join(", ") + "<br><small>下一步: 新会话打开「" + name + "」, 对设计方说'开始', 从需求澄清走起。</small>";
+        projName.value = "";
+        projName.placeholder = "可继续创建下一个…";
+      } else {
+        createResult.style.background = "#ffeef0";
+        createResult.textContent = "❌ " + (data.error || "创建失败");
+      }
+      btnCreate.disabled = false;
+    }).catch(function(e) {
+      createResult.style.background = "#ffeef0";
+      createResult.textContent = "请求失败: " + e.message;
+      btnCreate.disabled = false;
+    });
+  };
+</script>
+</body>
+</html>
